@@ -10,23 +10,31 @@ const int green_led = 4;
 const int blue_led = 5;
 
 const int color_count = 4;
+const int max_level = 100;
+int sequence[max_level];
+
+bool new_level = true;
 
 bool game_start = false;
 int colors[] = {red_led, yellow_led, green_led, blue_led};
-int inputs[] = {red_button, yellow_button, green_led, blue_led};
+int inputs[] = {red_button, yellow_button, green_button, blue_button};
 
 int level = 1;
 int index = 0;
-int color_to_add = 0;
+
+
+int reset_count = 0;
+
+bool last_reset_state = HIGH;
 
 
 void setup() {
   // put your setup code here, to run once:
-  pinMode(reset_button, INPUT);
-  pinMode(red_button, INPUT);
-  pinMode(yellow_button, INPUT);
-  pinMode(green_button, INPUT);
-  pinMode(blue_button, INPUT);
+  pinMode(reset_button, INPUT_PULLUP);
+  pinMode(red_button, INPUT_PULLUP);
+  pinMode(yellow_button, INPUT_PULLUP);
+  pinMode(green_button, INPUT_PULLUP);
+  pinMode(blue_button, INPUT_PULLUP);
 
   pinMode(red_led, OUTPUT);
   pinMode(yellow_led, OUTPUT);
@@ -36,66 +44,55 @@ void setup() {
   digitalWrite(red_led, LOW);
   digitalWrite(yellow_led, LOW);
   digitalWrite(green_led, LOW);
-  digitalWrite(red_led, LOW);
+  digitalWrite(blue_led, LOW);
+
   
 }
 void loop() {
-  int reset_count = 0;
   int reset_button_state = digitalRead(reset_button);
   // put your main code here, to run repeatedly:
-  int input_sequence[level];
-  int current_sequence[level];
 
-  if(reset_button_state == HIGH && reset_count == 0){
-    reset_count++;
-    game_start = true;
+  if(last_reset_state == HIGH && reset_button_state == LOW){
+    game_start = !game_start;
   }
-  if(reset_button_state == HIGH && reset_count == 1){
-    game_start = false;
-  }
+  last_reset_state = reset_button_state;
   if(game_start){
-    int red_button_state = digitalRead(red_button);
-    int yellow_button_state = digitalRead(yellow_button);
-    int green_button_state = digitalRead(green_button);
-    int blue_button_state = digitalRead(blue_button);
+    if(new_level){
+      sequence[level - 1] = random(0, color_count);
+      new_level = false;
+    }
 
     for(int i = 0; i < level; i++){
-      index = random(0, color_count - 1);
-      color_to_add = colors[index];
-      digitalWrite(color_to_add, HIGH);
-      digitalWrite(color_to_add, LOW);
+      int current_led = colors[sequence[i]];
+      digitalWrite(current_led, HIGH);
       delay(200);
-      current_sequence[i] = color_to_add;
+      digitalWrite(current_led, LOW);
     }
     delay(1000);
+
+    bool correct = true;
+
     for(int i = 0; i < level; i++){
-      if(red_button_state == HIGH){
-        input_sequence[i] == red_led;
-        digitalWrite(red_led, HIGH);
-        digitalWrite(red_led, LOW);
-      } else if(yellow_button_state == HIGH){
-        input_sequence[i] == yellow_led;
-        digitalWrite(yellow_led, HIGH);
-        digitalWrite(yellow_led, LOW);
-      } else if(green_button_state == HIGH){
-        input_sequence[i] == green_led;
-        digitalWrite(green_led, HIGH);
-        digitalWrite(green_led, LOW);
-      } else if(red_button_state == HIGH){
-        input_sequence[i] == blue_led;
-        digitalWrite(blue_led, HIGH);
-        digitalWrite(blue_led, LOW);
-      } 
-    }
-    int input_sequence_length = sizeof(input_sequence) / sizeof(input_sequence[0]);
-    int current_sequence_length = sizeof(current_sequence) / sizeof(current_sequence[0]);
-    int correct_count = 0;
-    for(int i = 0; i < input_sequence_length; i++){
-      if(input_sequence[i] == current_sequence[i]){
-        correct_count++;
+      int pressed = -1;
+
+      while(pressed == -1){
+        if(digitalRead(red_button) == LOW) pressed = 0;
+        else if(digitalRead(yellow_button) == LOW) pressed = 1;
+        else if(digitalRead(green_button) == LOW) pressed = 2;
+        else if(digitalRead(blue_button) == LOW) pressed = 3;
       }
+
+      digitalWrite(colors[pressed], HIGH);
+      delay(300);
+      digitalWrite(colors[pressed], LOW);
+
+      if(pressed != sequence[i]){
+        correct = false;
+        break;
+      }
+      delay(300);
     }
-    if(correct_count != current_sequence_length){
+    if(!correct){
       digitalWrite(red_led, HIGH);
       digitalWrite(yellow_led, HIGH);
       digitalWrite(green_led, HIGH);
@@ -117,8 +114,10 @@ void loop() {
       digitalWrite(blue_led, LOW);
       delay(500);
       game_start = false;
+      new_level = true;
+      level = 1;
     }
-    else if(correct_count == current_sequence_length){
+    else if(correct){
       digitalWrite(red_led, HIGH);
       delay(500);
       digitalWrite(yellow_led, HIGH);
@@ -136,6 +135,7 @@ void loop() {
       digitalWrite(red_led, LOW);
       delay(500);
       level++;
+      new_level = true;
     }
 
   }
